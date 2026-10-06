@@ -203,13 +203,21 @@ export async function loadDB() {
   }
 }
 
+// Admin app: the real reason Firestore gave (e.g. "permission-denied", "unavailable"), appended to
+// the existing popup so a failed sync can be diagnosed instead of guessed at.
+const syncDetail = (err) => {
+  const code = (err && err.code) || (err && err.name) || 'error';
+  const msg = err && err.message ? ' — ' + String(err.message).slice(0, 160) : '';
+  return '\n\nDetails: ' + code + msg;
+};
+
 export async function saveDB(DB) {
   if (DEMO_MODE || !fbDB) return;
   try {
     await Promise.all(DB_KEYS.map((key) => writeKeyValue(key, DB[key])));
   } catch (err) {
     console.error('Firestore save failed:', err);
-    alert('⚠ Could not sync your latest change to the cloud database. Please check your internet connection and try again.');
+    alert('⚠ Could not sync your latest change to the cloud database. Please check your internet connection and try again.' + syncDetail(err));
   }
 }
 
@@ -264,6 +272,6 @@ export async function saveBanners(banners) {
   if (DEMO_MODE || !fbDB) return;
   try { await writeKeyValue(BANNERS_DOC_ID, banners); } catch (err) {
     console.error('Firestore banner save failed:', err);
-    alert('⚠ Could not sync this banner to the cloud database. Please check your internet connection and try again.');
+    alert('⚠ Could not sync this banner to the cloud database. Please check your internet connection and try again.' + syncDetail(err));
   }
 }

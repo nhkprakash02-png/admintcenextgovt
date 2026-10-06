@@ -7,7 +7,9 @@
 const enc = new TextEncoder();
 
 export const SESSION_COOKIE = 'tce_admin_session';
-export const SESSION_MAX_AGE_S = 60 * 60 * 24 * 7; // stay logged in for 7 days
+// Stay logged in for ~6 months, and the session is renewed every time the admin opens the app
+// (see /api/session), so in practice it lasts until the Logout button is pressed.
+export const SESSION_MAX_AGE_S = 60 * 60 * 24 * 180;
 
 const subtle = () => globalThis.crypto.subtle;
 const toHex = (buf) => Array.from(new Uint8Array(buf)).map((b) => b.toString(16).padStart(2, '0')).join('');
