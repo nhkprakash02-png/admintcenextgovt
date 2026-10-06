@@ -49,7 +49,7 @@ export async function POST(request) {
   res.cookies.set(SESSION_COOKIE, await createSession(), {
     httpOnly: true,
     secure: process.env.NODE_ENV === 'production',
-    sameSite: 'strict',
+    sameSite: 'lax', // 'strict' hid the cookie when the app was opened from a link/another app, which looked like being logged out
     path: '/',
     maxAge: SESSION_MAX_AGE_S,
   });
