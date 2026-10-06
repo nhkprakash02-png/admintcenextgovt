@@ -1,11 +1,20 @@
 import React from 'react';
 import './globals.css';
+import PwaAndSession from '../components/PwaAndSession';
 
 export const metadata = {
   title: 'TCE Admin',
   description: 'TCE - The Competitive Edge · Admin',
   robots: { index: false, follow: false, nocache: true },
-  icons: { icon: '/logo.png', apple: '/logo.png' },
+  manifest: '/manifest.json',
+  icons: {
+    icon: [
+      { url: '/icons/icon-192.png', sizes: '192x192', type: 'image/png' },
+      { url: '/icons/icon-512.png', sizes: '512x512', type: 'image/png' },
+    ],
+    apple: [{ url: '/icons/apple-touch-icon.png', sizes: '180x180', type: 'image/png' }],
+  },
+  appleWebApp: { capable: true, title: 'TCE Admin', statusBarStyle: 'black-translucent' },
 };
 
 export const viewport = {
@@ -25,7 +34,10 @@ export default function RootLayout({ children }) {
           rel="stylesheet"
         />
       </head>
-      <body className="no-tap-highlight">{children}</body>
+      <body className="no-tap-highlight">
+        {children}
+        <PwaAndSession />
+      </body>
     </html>
   );
 }
