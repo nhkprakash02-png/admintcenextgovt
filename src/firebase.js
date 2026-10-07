@@ -1,12 +1,12 @@
 'use client';
 
 // Same Firebase project as the student website (tce-nahata), so everything the admin changes
-// shows up on the student site straight away. Only Firestore is initialised here: this app uses
-// no Firebase Authentication (the admin login is handled by the server, see src/lib/session.js)
-// and no Firebase Storage (solution photos are saved in Firestore, see lib/questionImageUpload.js),
-// which keeps everything on the free Spark plan.
+// shows up on the student site straight away. Firestore holds the data; Firebase Authentication
+// is used only to sign this admin app in with a token created by the admin server
+// (see src/app/api/firebase-token/route.js). No Firebase Storage is used.
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
+import { getAuth } from 'firebase/auth';
 
 export const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY || 'AIzaSyAelAmzeV33Ejc6i-aDKJg_GDgqJdswcI4',
@@ -19,12 +19,13 @@ export const firebaseConfig = {
 
 export const DEMO_MODE = false;
 
-let fbApp = null, fbDB = null;
+let fbApp = null, fbDB = null, fbAuth = null;
 try {
   fbApp = initializeApp(firebaseConfig);
   fbDB = getFirestore(fbApp);
+  fbAuth = getAuth(fbApp);
 } catch (e) {
   console.warn('Firebase init failed', e);
 }
 
-export { fbApp, fbDB };
+export { fbApp, fbDB, fbAuth };
