@@ -1,14 +1,13 @@
 'use client';
 
-// The admin screens were written against the student site's AppContext and only ever use four
-// things from it: DB, saveDB, banners and setBanners (plus setDB/dbLoading here for the shell).
-// This file provides exactly those with the SAME logic as the student site — load everything
-// from Firestore once, keep it live with the same realtime listeners, and write changes back with
-// the same saveDB — so every admin screen works unchanged. All the student-only parts (student
-// login, routing, exams, payments, theme) are intentionally not here.
+// The admin screens only ever use DB, saveDB, banners and setBanners from the app context.
+// This file provides them with the same logic as the student site: sign in to Firebase as the
+// admin, load everything from Firestore once, keep it live with the same realtime listeners, and
+// write changes back with the same saveDB.
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { loadDB, saveDB as persistDB, attachDbRealtimeListeners, loadBanners } from '../lib/db';
 import { emptyDB } from '../lib/seedData';
+import { ensureFirebaseSignIn } from '../lib/firebaseAdminSignIn';
 
 const AppContext = createContext(null);
 
@@ -18,14 +17,18 @@ export function AppProvider({ children }) {
   const [loadError, setLoadError] = useState('');
   const [banners, setBanners] = useState([]);
   const [attempt, setAttempt] = useState(0); // bump to retry loading after a failure
+  const [authReady, setAuthReady] = useState(false);
 
-  // Boot: load DB + banners from Firestore.
+  // Boot: sign in to Firebase, then load DB + banners from Firestore.
   useEffect(() => {
     let cancelled = false;
     (async () => {
       try {
         setLoadError('');
         setDbLoading(true);
+        await ensureFirebaseSignIn();
+        if (cancelled) return;
+        setAuthReady(true);
         const loaded = await loadDB();
         if (cancelled) return;
         setDB(loaded);
@@ -40,16 +43,17 @@ export function AppProvider({ children }) {
     return () => { cancelled = true; };
   }, [attempt]);
 
-  // Same single-subscription realtime listener setup as the student site (subscribed once; the
-  // ref lets it read the latest DB without re-subscribing — see the note in lib/db.js).
+  // Same single-subscription realtime listener setup as the student site, started only after the
+  // admin is signed in (listeners that start too early are rejected and never recover).
   const dbRef = useRef(DB);
   useEffect(() => { dbRef.current = DB; }, [DB]);
   useEffect(() => {
+    if (!authReady) return undefined;
     const unsub = attachDbRealtimeListeners(() => dbRef.current, (key, incoming) => {
       setDB((prev) => ({ ...prev, [key]: incoming }));
     });
     return unsub;
-  }, []);
+  }, [authReady]);
 
   // Identical to the student site's saveDB: update the screen immediately, sync to Firestore.
   const saveDB = useCallback((updater) => {
