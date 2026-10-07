@@ -102,13 +102,14 @@ export default function QuestionEditor({ test, onChangeQuestions }) {
   const editQuestion = (qid) => {
     const q = test.questions.find((x) => x.id === qid); if (!q) return;
     const en = prompt('Question (English):', q.textEn); if (en === null) return;
+    const bn = prompt('Question (Bengali):', q.textBn || ''); if (bn === null) return;
     const a = prompt('Option A:', q.options[0]?.textEn || ''); if (a === null) return;
     const b = prompt('Option B:', q.options[1]?.textEn || ''); if (b === null) return;
     const c = prompt('Option C:', q.options[2]?.textEn || ''); if (c === null) return;
     const d = prompt('Option D:', q.options[3]?.textEn || ''); if (d === null) return;
     const correct = prompt('Correct option (A/B/C/D):', q.correct); if (correct === null) return;
     const exp = prompt('Explanation:', q.explanation || ''); if (exp === null) return;
-    onChangeQuestions((qs) => qs.map((x) => (x.id === qid ? { ...x, textEn: en, options: [{ key: 'A', textEn: a, textBn: '' }, { key: 'B', textEn: b, textBn: '' }, { key: 'C', textEn: c, textBn: '' }, { key: 'D', textEn: d, textBn: '' }], correct: correct.toUpperCase(), explanation: exp } : x)));
+    onChangeQuestions((qs) => qs.map((x) => (x.id === qid ? { ...x, textEn: en, textBn: bn, options: [{ key: 'A', textEn: a, textBn: '' }, { key: 'B', textEn: b, textBn: '' }, { key: 'C', textEn: c, textBn: '' }, { key: 'D', textEn: d, textBn: '' }], correct: correct.toUpperCase(), explanation: exp } : x)));
   };
 
   const deleteQuestion = (qid) => {
