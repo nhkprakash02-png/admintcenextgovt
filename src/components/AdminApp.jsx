@@ -3,6 +3,8 @@
 import React, { useState } from 'react';
 import { ClipboardList, Users, FileUp, Brain, BookOpen, GraduationCap, Megaphone, Settings, LogOut, Loader2 } from 'lucide-react';
 import { AppProvider, useApp } from '../context/AppContext';
+import { signOut } from 'firebase/auth';
+import { fbAuth } from '../firebase';
 import MockManager from './admin/MockManager';
 import PendingApprovals from './admin/PendingApprovals';
 import StudentsManager from './admin/StudentsManager';
@@ -54,6 +56,7 @@ function Dashboard() {
 
   const logout = async () => {
     setLoggingOut(true);
+    try { if (fbAuth) await signOut(fbAuth); } catch (e) { /* ignore */ }
     try { await fetch('/api/logout', { method: 'POST' }); } catch (e) { /* the reload below still shows the login screen if the cookie is gone */ }
     window.location.reload();
   };
