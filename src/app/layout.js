@@ -1,6 +1,7 @@
 import React from 'react';
 import './globals.css';
 import PwaAndSession from '../components/PwaAndSession';
+import InstallButton from '../components/InstallButton';
 
 export const metadata = {
   title: 'TCE Admin',
@@ -37,6 +38,7 @@ export default function RootLayout({ children }) {
       <body className="no-tap-highlight">
         {children}
         <PwaAndSession />
+        <InstallButton />
       </body>
     </html>
   );
