@@ -8,6 +8,7 @@ import { fbAuth } from '../firebase';
 import MockManager from './admin/MockManager';
 import PendingApprovals from './admin/PendingApprovals';
 import StudentsManager from './admin/StudentsManager';
+import FeesManager from './admin/FeesManager';
 import ResultsManager from './admin/ResultsManager';
 import PyqManager from './admin/PyqManager';
 import GkQuizManager from './admin/GkQuizManager';
@@ -23,6 +24,7 @@ import SettingsManager from './admin/SettingsManager';
 const STUDENT_SUBTABS = [
   ['pending', 'Pending Approvals', PendingApprovals],
   ['list', 'Students List', StudentsManager],
+  ['fees', 'Monthly Fees', FeesManager],
   ['results', 'Mock Results', ResultsManager],
 ];
 const UPDATE_SUBTABS = [
