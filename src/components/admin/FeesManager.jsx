@@ -17,7 +17,7 @@ export default function FeesManager() {
   const thisYear = new Date().getFullYear();
   const [year, setYear] = useState(thisYear);
   const [query, setQuery] = useState('');
-  const [waStatus, setWaStatus] = useState(null); // { ok, text } — result of the WhatsApp message
+  const [mailStatus, setMailStatus] = useState(null); // { ok, text } — result of the thank-you email
   const years = [thisYear - 2, thisYear - 1, thisYear, thisYear + 1];
 
   // Same list as the Students List page: registered students only (pending reviews and the
@@ -30,21 +30,32 @@ export default function FeesManager() {
 
   const isPaid = (s, i) => Boolean(s.feePaid && s.feePaid[monthKey(year, i)]);
 
-  // After a month is marked PAID, ask the server to send the "fee received" WhatsApp message.
-  const sendFeeWhatsApp = async (student) => {
-    setWaStatus({ ok: true, text: `Fee saved. Sending WhatsApp message to ${student.name}…` });
+  // After a month is marked PAID, send the same "Payment Confirmed" thank-you email that a
+  // successful Razorpay payment sends (the server route does the sending).
+  const sendFeeEmail = async (student, monthLabel) => {
+    if (!student.email) {
+      setMailStatus({ ok: false, text: `Fee marked as paid, but no email was sent: ${student.name} has no email address on file.` });
+      return;
+    }
+    const batch = (DB.batches || []).find((b) => b.name === student.batch);
+    const amount = batch && batch.price != null ? batch.price : student.paidAmount;
+    if (!(Number(amount) > 0)) {
+      setMailStatus({ ok: false, text: `Fee marked as paid, but no email was sent: no batch fee amount is on file for ${student.name}.` });
+      return;
+    }
+    setMailStatus({ ok: true, text: `Fee saved. Sending thank-you email to ${student.name}…` });
     try {
-      const res = await fetch('/api/whatsapp/fee-paid', {
+      const res = await fetch('/api/email/fee-paid', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ name: student.name, phone: student.phone }),
+        body: JSON.stringify({ name: student.name, email: student.email, batchName: student.batch, amount, monthLabel }),
       });
       const data = await res.json().catch(() => ({}));
-      if (res.ok) setWaStatus({ ok: true, text: `Fee marked as paid and WhatsApp message sent to ${student.name}.` });
-      else setWaStatus({ ok: false, text: `Fee marked as paid, but the WhatsApp message to ${student.name} was not sent: ${data.error || 'unknown error'}` });
+      if (res.ok) setMailStatus({ ok: true, text: `Fee marked as paid and thank-you email sent to ${student.name}.` });
+      else setMailStatus({ ok: false, text: `Fee marked as paid, but the email to ${student.name} was not sent: ${data.error || 'unknown error'}` });
     } catch (e) {
-      setWaStatus({ ok: false, text: `Fee marked as paid, but the WhatsApp message to ${student.name} was not sent (no connection to the server).` });
+      setMailStatus({ ok: false, text: `Fee marked as paid, but the email to ${student.name} was not sent (no connection to the server).` });
     }
   };
 
@@ -65,7 +76,7 @@ export default function FeesManager() {
         return { ...s, feePaid };
       }),
     }));
-    if (!paid) sendFeeWhatsApp(student); // only when marking as paid, never when undoing
+    if (!paid) sendFeeEmail(student, `${MONTHS[i]} ${year}`); // only when marking as paid, never when undoing
   };
 
   const exportFeesExcel = () => {
@@ -109,8 +120,8 @@ export default function FeesManager() {
         />
       </div>
 
-      {waStatus && (
-        <p className={`text-xs mb-3 ${waStatus.ok ? 'text-emerald-400' : 'text-red-400'}`}>{waStatus.text}</p>
+      {mailStatus && (
+        <p className={`text-xs mb-3 ${mailStatus.ok ? 'text-emerald-400' : 'text-red-400'}`}>{mailStatus.text}</p>
       )}
 
       {shown.length === 0 && <p className="text-xs muted text-center py-8">{listed.length === 0 ? 'No registered students yet.' : 'No student matches your search.'}</p>}
