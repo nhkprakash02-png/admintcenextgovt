@@ -47,6 +47,7 @@ export async function POST(request) {
     return NextResponse.json({ ok: true });
   } catch (err) {
     console.error('fee-paid email failed:', err);
-    return NextResponse.json({ error: 'Could not send the email. Please check the Resend settings.' }, { status: 500 });
+    // Only the logged-in admin can reach this route, so the real reason is safe to show.
+    return NextResponse.json({ error: `Could not send the email: ${(err && err.message) || 'unknown error'}` }, { status: 500 });
   }
 }
