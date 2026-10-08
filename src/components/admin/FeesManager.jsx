@@ -18,6 +18,8 @@ export default function FeesManager() {
   const [year, setYear] = useState(thisYear);
   const [query, setQuery] = useState('');
   const [mailStatus, setMailStatus] = useState(null); // { ok, text } — result of the thank-you email
+  const [pending, setPending] = useState(null); // { student, i } — month waiting for a batch to be chosen
+  const [pickedBatchId, setPickedBatchId] = useState('');
   const years = [thisYear - 2, thisYear - 1, thisYear, thisYear + 1];
 
   // Same list as the Students List page: registered students only (pending reviews and the
@@ -28,19 +30,16 @@ export default function FeesManager() {
     ? listed.filter((s) => (s.name || '').toLowerCase().includes(q) || String(s.phone || '').includes(q))
     : listed;
 
+  // Running batches the admin can choose from when marking a month as paid.
+  const activeBatches = (DB.batches || []).filter((b) => b.active !== false);
+
   const isPaid = (s, i) => Boolean(s.feePaid && s.feePaid[monthKey(year, i)]);
 
   // After a month is marked PAID, send the same "Payment Confirmed" thank-you email that a
-  // successful Razorpay payment sends (the server route does the sending).
-  const sendFeeEmail = async (student, monthLabel) => {
+  // successful Razorpay payment sends. The amount is the price of the batch the admin picked.
+  const sendFeeEmail = async (student, monthLabel, batch) => {
     if (!student.email) {
       setMailStatus({ ok: false, text: `Fee marked as paid, but no email was sent: ${student.name} has no email address on file.` });
-      return;
-    }
-    const batch = (DB.batches || []).find((b) => b.name === student.batch);
-    const amount = batch && batch.price != null ? batch.price : student.paidAmount;
-    if (!(Number(amount) > 0)) {
-      setMailStatus({ ok: false, text: `Fee marked as paid, but no email was sent: no batch fee amount is on file for ${student.name}.` });
       return;
     }
     setMailStatus({ ok: true, text: `Fee saved. Sending thank-you email to ${student.name}…` });
@@ -49,7 +48,7 @@ export default function FeesManager() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'same-origin',
-        body: JSON.stringify({ name: student.name, email: student.email, batchName: student.batch, amount, monthLabel }),
+        body: JSON.stringify({ name: student.name, email: student.email, batchName: batch.name, amount: batch.price, monthLabel }),
       });
       const data = await res.json().catch(() => ({}));
       if (res.ok) setMailStatus({ ok: true, text: `Fee marked as paid and thank-you email sent to ${student.name}.` });
@@ -59,24 +58,42 @@ export default function FeesManager() {
     }
   };
 
-  const toggleMonth = (student, i) => {
+  // Writes the paid / unpaid state of one month on the student's record (unchanged logic).
+  const saveMonth = (student, i, makePaid) => {
     const key = monthKey(year, i);
-    const paid = isPaid(student, i);
-    const msg = paid
-      ? `Mark ${MONTHS[i]} ${year} as UNPAID for ${student.name}?`
-      : `Are you sure you want to mark ${MONTHS[i]} ${year} as paid for ${student.name}?`;
-    if (!confirm(msg)) return;
     const today = new Date().toISOString().slice(0, 10);
     saveDB((prev) => ({
       ...prev,
       students: prev.students.map((s) => {
         if (s.id !== student.id) return s;
         const feePaid = { ...(s.feePaid || {}) };
-        if (paid) delete feePaid[key]; else feePaid[key] = today;
+        if (makePaid) feePaid[key] = today; else delete feePaid[key];
         return { ...s, feePaid };
       }),
     }));
-    if (!paid) sendFeeEmail(student, `${MONTHS[i]} ${year}`); // only when marking as paid, never when undoing
+  };
+
+  const toggleMonth = (student, i) => {
+    if (isPaid(student, i)) {
+      if (!confirm(`Mark ${MONTHS[i]} ${year} as UNPAID for ${student.name}?`)) return;
+      saveMonth(student, i, false);
+      return;
+    }
+    // Marking as paid: first ask which batch this payment is for (nothing is saved until OK).
+    const current = activeBatches.find((b) => b.name === student.batch);
+    setPickedBatchId(current ? current.id : '');
+    setPending({ student, i });
+  };
+
+  const closePicker = () => setPending(null); // Cancel / close: the month stays unpaid
+
+  const confirmPaid = () => {
+    const batch = activeBatches.find((b) => b.id === pickedBatchId);
+    if (!pending || !batch) return;
+    const { student, i } = pending;
+    setPending(null);
+    saveMonth(student, i, true);
+    sendFeeEmail(student, `${MONTHS[i]} ${year}`, batch);
   };
 
   const exportFeesExcel = () => {
@@ -159,6 +176,50 @@ export default function FeesManager() {
           );
         })}
       </div>
+
+      {pending && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.6)' }}
+          onClick={closePicker}
+          role="dialog" aria-modal="true" aria-label="Select batch"
+        >
+          <div
+            className="card rounded-2xl p-5 w-full max-w-sm"
+            style={{ background: 'var(--panel)', border: '1px solid var(--border)' }}
+            onClick={(e) => e.stopPropagation()}
+          >
+            <p className="text-sm font-bold">Mark {MONTHS[pending.i]} {year} as paid</p>
+            <p className="text-[11px] muted mb-3">for {pending.student.name}</p>
+            <p className="text-xs font-bold muted uppercase mb-2">Select batch</p>
+            {activeBatches.length === 0 && <p className="text-xs muted py-3">No active batches found. Add one in the Batches tab first.</p>}
+            <div className="space-y-2 mb-3 max-h-60 overflow-y-auto">
+              {activeBatches.map((b) => {
+                const on = pickedBatchId === b.id;
+                return (
+                  <button
+                    key={b.id}
+                    onClick={() => setPickedBatchId(b.id)}
+                    aria-pressed={on}
+                    className={`w-full flex justify-between items-center gap-3 rounded-lg border px-3 py-2.5 text-xs font-bold text-left ${on ? 'gold-grad text-ink border-transparent' : ''}`}
+                    style={on ? undefined : { borderColor: 'var(--border)' }}
+                  >
+                    <span className="min-w-0 truncate">{b.name}</span>
+                    <span className="shrink-0">₹{b.price}</span>
+                  </button>
+                );
+              })}
+            </div>
+            <p className="text-[10px] muted mb-3">
+              {pending.student.email ? `A thank-you email will be sent to ${pending.student.email}.` : 'No email on file for this student, so no email will be sent.'}
+            </p>
+            <div className="flex gap-2">
+              <button onClick={closePicker} className="flex-1 btn-ghost rounded-lg py-2 text-xs font-bold">Cancel</button>
+              <button onClick={confirmPaid} disabled={!pickedBatchId} className="flex-1 btn-gold rounded-lg py-2 text-xs font-bold disabled:opacity-50">Confirm Paid</button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
