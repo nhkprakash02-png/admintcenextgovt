@@ -1,5 +1,6 @@
 // POST /api/email/fee-paid  — ADMIN PANEL only.
-// Body: { name, email, batchName, amount, monthLabel }
+// Body: { name, email, batchName, amount, monthLabel } — batchName/amount come from the batch the
+// admin picked in the Monthly Fees batch-selection box.
 // Sends the same "Payment Confirmed" thank-you email that a successful Razorpay payment sends
 // (no invoice/bill), when the admin ticks a month as paid in Monthly Fees.
 // Only a logged-in admin (valid login cookie) can call this.
@@ -30,7 +31,7 @@ export async function POST(request) {
 
     if (!EMAIL_RE.test(email)) return NextResponse.json({ error: 'This student has no valid email address on file.' }, { status: 400 });
     if (!batchName || !Number.isFinite(amount) || amount <= 0) {
-      return NextResponse.json({ error: 'No batch or fee amount is on file for this student.' }, { status: 400 });
+      return NextResponse.json({ error: 'The selected batch has no valid fee amount set. Check its price in the Batches tab.' }, { status: 400 });
     }
 
     const { subject, html } = paymentConfirmationEmail({
