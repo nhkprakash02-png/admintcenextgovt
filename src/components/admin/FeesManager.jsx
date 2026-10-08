@@ -17,6 +17,7 @@ export default function FeesManager() {
   const thisYear = new Date().getFullYear();
   const [year, setYear] = useState(thisYear);
   const [query, setQuery] = useState('');
+  const [waStatus, setWaStatus] = useState(null); // { ok, text } — result of the WhatsApp message
   const years = [thisYear - 2, thisYear - 1, thisYear, thisYear + 1];
 
   // Same list as the Students List page: registered students only (pending reviews and the
@@ -28,6 +29,24 @@ export default function FeesManager() {
     : listed;
 
   const isPaid = (s, i) => Boolean(s.feePaid && s.feePaid[monthKey(year, i)]);
+
+  // After a month is marked PAID, ask the server to send the "fee received" WhatsApp message.
+  const sendFeeWhatsApp = async (student) => {
+    setWaStatus({ ok: true, text: `Fee saved. Sending WhatsApp message to ${student.name}…` });
+    try {
+      const res = await fetch('/api/whatsapp/fee-paid', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'same-origin',
+        body: JSON.stringify({ name: student.name, phone: student.phone }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (res.ok) setWaStatus({ ok: true, text: `Fee marked as paid and WhatsApp message sent to ${student.name}.` });
+      else setWaStatus({ ok: false, text: `Fee marked as paid, but the WhatsApp message to ${student.name} was not sent: ${data.error || 'unknown error'}` });
+    } catch (e) {
+      setWaStatus({ ok: false, text: `Fee marked as paid, but the WhatsApp message to ${student.name} was not sent (no connection to the server).` });
+    }
+  };
 
   const toggleMonth = (student, i) => {
     const key = monthKey(year, i);
@@ -46,6 +65,7 @@ export default function FeesManager() {
         return { ...s, feePaid };
       }),
     }));
+    if (!paid) sendFeeWhatsApp(student); // only when marking as paid, never when undoing
   };
 
   const exportFeesExcel = () => {
@@ -88,6 +108,10 @@ export default function FeesManager() {
           className="w-full rounded-lg pl-9 pr-3 py-2 text-xs"
         />
       </div>
+
+      {waStatus && (
+        <p className={`text-xs mb-3 ${waStatus.ok ? 'text-emerald-400' : 'text-red-400'}`}>{waStatus.text}</p>
+      )}
 
       {shown.length === 0 && <p className="text-xs muted text-center py-8">{listed.length === 0 ? 'No registered students yet.' : 'No student matches your search.'}</p>}
 
