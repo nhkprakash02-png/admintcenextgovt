@@ -1,13 +1,17 @@
 'use client';
 
 import React, { useState } from 'react';
-import { Printer, Trash2 } from 'lucide-react';
+import { Printer, Trash2, FileDown } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { uid, SUBCATEGORIES } from '../../lib/utils';
 import { printOfflinePaper } from '../../lib/examEngine';
 import QuestionEditor from './QuestionEditor';
+import { OMR_SUBJECT, OMR_SET_LETTERS, DEFAULT_ROLL_DIGITS, bookletNumber } from '../../lib/omr';
+import { printOmrBooklet } from '../../lib/omrPaper';
 
-const SUBJECTS = ['math', 'english', 'reasoning', 'gk', 'science', 'full'];
+const SUBJECTS = ['math', 'english', 'reasoning', 'gk', 'science', 'full', 'omr'];
+// 'full' is the regular online full mock; 'omr' is the Offline / OMR full mock (5 printable sets).
+const SUBJECT_LABELS = { full: 'FULL (ONLINE)', omr: 'OFFLINE / OMR FULL' };
 
 function promptSubCategory(subject, currentValue) {
   const opts = SUBCATEGORIES[subject];
@@ -31,7 +35,7 @@ export default function MockManager() {
   const activeTestId = testId || tests[0]?.id || null;
   const test = tests.find((t) => t.id === activeTestId);
 
-  const updateTests = (updater) => saveDB((prev) => ({ ...prev, mockTests: { ...prev.mockTests, [subject]: updater(prev.mockTests[subject]) } }));
+  const updateTests = (updater) => saveDB((prev) => ({ ...prev, mockTests: { ...prev.mockTests, [subject]: updater(prev.mockTests[subject] || []) } }));
   const updateTestQuestions = (updater) => updateTests((ts) => ts.map((t) => (t.id === activeTestId ? { ...t, questions: updater(t.questions) } : t)));
 
   const addNewMockTest = () => {
@@ -83,11 +87,21 @@ export default function MockManager() {
     updateTests((ts) => ts.map((t) => (t.id === activeTestId ? { ...t, order } : t)));
   };
 
+  // Offline / OMR only: how many digits of the student's phone number make up their roll number.
+  const setOmrRollDigits = () => {
+    if (!test) return;
+    const input = prompt('Roll number digits (taken from the END of the student\'s registered phone number, 4 to 10):', test.omrRollDigits || DEFAULT_ROLL_DIGITS);
+    if (input === null) return;
+    const n = parseInt(input, 10);
+    if (!Number.isFinite(n) || n < 4 || n > 10) { alert('Please enter a number between 4 and 10.'); return; }
+    updateTests((ts) => ts.map((t) => (t.id === activeTestId ? { ...t, omrRollDigits: n } : t)));
+  };
+
   return (
     <div>
       <div className="flex flex-wrap gap-2 mb-4">
         {SUBJECTS.map((s) => (
-          <button key={s} onClick={() => { setSubject(s); setTestId(null); }} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${subject === s ? 'tab-active' : 'card2 muted'}`}>{s.toUpperCase()}</button>
+          <button key={s} onClick={() => { setSubject(s); setTestId(null); }} className={`px-3 py-1.5 rounded-lg text-xs font-bold ${subject === s ? 'tab-active' : 'card2 muted'}`}>{SUBJECT_LABELS[s] || s.toUpperCase()}</button>
         ))}
       </div>
       {SUBCATEGORIES[subject] && (
@@ -117,6 +131,25 @@ export default function MockManager() {
           </>
         )}
       </div>
+      {subject === OMR_SUBJECT && test && (
+        <div className="card2 rounded-xl p-4 mb-4">
+          <p className="text-xs font-bold muted uppercase mb-1">Offline / OMR Question Sets</p>
+          <p className="text-[11px] muted mb-3">
+            {test.questions.length
+              ? `5 sets (A–E) are generated automatically from the ${test.questions.length} questions below: Set A keeps your order, Sets B–E re-order the questions and shuffle the options. Tap a set to open its printable booklet, then choose "Save as PDF". Finish adding or editing questions BEFORE printing — adding or deleting a question changes the sets.`
+              : 'Add questions to this test (manually or with Bulk Upload) and the 5 sets (A–E) will be generated automatically.'}
+          </p>
+          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-3">
+            {OMR_SET_LETTERS.map((L) => (
+              <button key={L} disabled={!test.questions.length} onClick={() => printOmrBooklet(test, L)} className="btn-gold rounded-lg px-2 py-2 text-xs font-bold flex flex-col items-center gap-0.5 disabled:opacity-40 disabled:cursor-not-allowed">
+                <span className="flex items-center gap-1"><FileDown className="w-3.5 h-3.5" />Set {L} PDF</span>
+                <span className="text-[10px] font-normal">Booklet {bookletNumber(test.id, L)}</span>
+              </button>
+            ))}
+          </div>
+          <button onClick={setOmrRollDigits} className="btn-ghost rounded-lg px-3 py-2 text-xs font-bold">Roll No. digits: {test.omrRollDigits || DEFAULT_ROLL_DIGITS} (from phone number)</button>
+        </div>
+      )}
       {test ? <QuestionEditor test={test} onChangeQuestions={updateTestQuestions} /> : <p className="muted text-sm">No tests in this subject yet.</p>}
     </div>
   );
