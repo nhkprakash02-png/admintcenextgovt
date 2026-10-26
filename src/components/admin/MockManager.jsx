@@ -10,7 +10,7 @@ import { OMR_SUBJECT, OMR_SET_LETTERS, DEFAULT_ROLL_DIGITS, bookletNumber } from
 import { printOmrBooklet } from '../../lib/omrPaper';
 
 const SUBJECTS = ['math', 'english', 'reasoning', 'gk', 'science', 'full', 'omr'];
-// 'full' is the regular online full mock; 'omr' is the Offline / OMR full mock (5 printable sets).
+// 'full' is the regular online full mock; 'omr' is the Offline / OMR full mock (4 printable sets, A–D).
 const SUBJECT_LABELS = { full: 'FULL (ONLINE)', omr: 'OFFLINE / OMR FULL' };
 
 function promptSubCategory(subject, currentValue) {
@@ -136,10 +136,10 @@ export default function MockManager() {
           <p className="text-xs font-bold muted uppercase mb-1">Offline / OMR Question Sets</p>
           <p className="text-[11px] muted mb-3">
             {test.questions.length
-              ? `5 sets (A–E) are generated automatically from the ${test.questions.length} questions below: Set A keeps your order, Sets B–E re-order the questions and shuffle the options. Tap a set to open its printable booklet, then choose "Save as PDF". Finish adding or editing questions BEFORE printing — adding or deleting a question changes the sets.`
-              : 'Add questions to this test (manually or with Bulk Upload) and the 5 sets (A–E) will be generated automatically.'}
+              ? `4 sets (A–D) are generated automatically from the ${test.questions.length} questions below: Set A keeps your order, Sets B–D re-order the questions and shuffle the options. Tap a set to open its printable booklet, then choose "Save as PDF" (paper size A4). Finish adding or editing questions BEFORE printing — adding or deleting a question changes the sets.`
+              : 'Add questions to this test (manually or with Bulk Upload) and the 4 sets (A–D) will be generated automatically.'}
           </p>
-          <div className="grid grid-cols-2 sm:grid-cols-5 gap-2 mb-3">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
             {OMR_SET_LETTERS.map((L) => (
               <button key={L} disabled={!test.questions.length} onClick={() => printOmrBooklet(test, L)} className="btn-gold rounded-lg px-2 py-2 text-xs font-bold flex flex-col items-center gap-0.5 disabled:opacity-40 disabled:cursor-not-allowed">
                 <span className="flex items-center gap-1"><FileDown className="w-3.5 h-3.5" />Set {L} PDF</span>
@@ -153,4 +153,4 @@ export default function MockManager() {
       {test ? <QuestionEditor test={test} onChangeQuestions={updateTestQuestions} /> : <p className="muted text-sm">No tests in this subject yet.</p>}
     </div>
   );
-}
+      }
