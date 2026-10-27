@@ -136,7 +136,7 @@ export default function MockManager() {
           <p className="text-xs font-bold muted uppercase mb-1">Offline / OMR Question Sets</p>
           <p className="text-[11px] muted mb-3">
             {test.questions.length
-              ? `4 sets (A–D) are generated automatically from the ${test.questions.length} questions below: Set A keeps your order, Sets B–D re-order the questions and shuffle the options. Tap a set to open its printable booklet, then choose "Save as PDF" (paper size A4). Finish adding or editing questions BEFORE printing — adding or deleting a question changes the sets.`
+              ? `4 sets (A–D) are generated automatically from the ${test.questions.length} questions below. Every set is jumbled independently — the questions are re-ordered and the options shuffled — so no set follows the order you uploaded. Tap a set to open its printable booklet, then choose "Save as PDF" (paper size A4). Finish adding or editing questions BEFORE printing — adding or deleting a question changes the sets.`
               : 'Add questions to this test (manually or with Bulk Upload) and the 4 sets (A–D) will be generated automatically.'}
           </p>
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-3">
@@ -153,4 +153,4 @@ export default function MockManager() {
       {test ? <QuestionEditor test={test} onChangeQuestions={updateTestQuestions} /> : <p className="muted text-sm">No tests in this subject yet.</p>}
     </div>
   );
-      }
+          }
