@@ -3,10 +3,12 @@
 // there to get the PDF file (this is the only way to get correct Bengali text in the PDF
 // without bundling a font file).
 //
-// Layout: a big header, an instructions box, then a two-column table — Bengali on the LEFT and
-// English on the RIGHT for every question. Each question is one table row that is never split
-// across pages, and the column titles / footer repeat on every page, so nothing overlaps or gets
-// cut off at the bottom.
+// Layout: a big header and an instructions box, then the questions in the classic vertical format
+// — English question, the Bengali translation right under it, then options (A)–(D) — flowing
+// continuously in two newspaper-style columns (down the left column first, then the right, then
+// onto the next page) so the booklet stays short for photocopying. A question is never split
+// between two columns or two pages, and the page footer is printed by the browser in the page
+// margin, so nothing can overlap the questions.
 import { buildOmrSet, bookletNumber } from './omr';
 
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
@@ -19,18 +21,21 @@ export function omrBookletHtml(test, letter) {
   const total = +(set.questions.length * mc).toFixed(2);
   const exam = `${esc(test.examCategory || 'All Exams')} — ${esc(test.title)}`;
 
-  // Bengali on the left, English on the right. If one language is missing for a question or
-  // option, the other language is shown in its place so no cell is ever empty.
-  const rows = set.questions.map((q, i) => {
+  // English question first, then the Bengali translation underneath, then the four options.
+  // If one language is missing, the other is shown so nothing is left blank.
+  const questions = set.questions.map((q, i) => {
     const en = has(q.textEn) ? q.textEn : q.textBn;
-    const bn = has(q.textBn) ? q.textBn : q.textEn;
-    const optHtml = (pick) => q.options.map((o) => `<div class="o"><b>(${esc(o.key)})</b> ${esc(pick(o))}</div>`).join('');
-    const optEn = (o) => (has(o.textEn) ? o.textEn : o.textBn);
-    const optBn = (o) => (has(o.textBn) ? o.textBn : o.textEn);
-    return `<tr>
-      <td class="bn"><div class="qt"><b>${i + 1}.</b> ${esc(bn)}</div><div class="opts">${optHtml(optBn)}</div></td>
-      <td class="en"><div class="qt"><b>${i + 1}.</b> ${esc(en)}</div><div class="opts">${optHtml(optEn)}</div></td>
-    </tr>`;
+    const bn = has(q.textBn) && has(q.textEn) ? q.textBn : '';
+    const opts = q.options.map((o) => {
+      const oe = has(o.textEn) ? o.textEn : o.textBn;
+      const ob = has(o.textBn) && has(o.textEn) ? o.textBn : '';
+      return `<div class="o"><b>(${esc(o.key)})</b> ${esc(oe)}${ob ? ` <span class="ob">/ ${esc(ob)}</span>` : ''}</div>`;
+    }).join('');
+    return `<div class="q">
+      <div class="qt"><b>${i + 1}.</b> ${esc(en)}</div>
+      ${bn ? `<div class="qb">${esc(bn)}</div>` : ''}
+      <div class="opts">${opts}</div>
+    </div>`;
   }).join('');
 
   const instructions = [
@@ -51,7 +56,13 @@ export function omrBookletHtml(test, letter) {
 <title>TCE_${esc(test.title).replace(/[^A-Za-z0-9]+/g, '_')}_Set_${letter}</title>
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;600;700&display=swap" rel="stylesheet">
 <style>
-  @page { size: A4; margin: 14mm 12mm 20mm 12mm; }
+  /* The footer on every page is drawn by the browser inside the bottom margin (so it can never
+     overlap a question). Browsers that don't support page-margin boxes simply leave it out. */
+  @page {
+    size: A4;
+    margin: 14mm 12mm 20mm 12mm;
+    @bottom-center { content: "The Competitive Edge  •  SET ${letter}  •  Booklet No. ${bookletNumber(test.id, letter)}  •  Page " counter(page) " of " counter(pages); font-size: 9px; color: #222; }
+  }
   * { box-sizing: border-box; }
   html { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   body { font-family: 'Noto Sans Bengali', Arial, Helvetica, sans-serif; color: #000; font-size: 11.5px; line-height: 1.4; margin: 0; overflow-wrap: anywhere; }
@@ -69,17 +80,14 @@ export function omrBookletHtml(test, letter) {
   .instr ol { margin: 0; padding-left: 26px; font-size: 10.5px; }
   .instr li { margin-bottom: 1.5px; }
 
-  table.q { width: 100%; border-collapse: collapse; table-layout: fixed; }
-  table.q thead { display: table-header-group; }
-  table.q tfoot { display: table-footer-group; }
-  table.q th { border: 1px solid #000; background: #e8e8e8; font-size: 11px; padding: 4px; text-align: center; }
-  table.q td { width: 50%; vertical-align: top; padding: 6px 8px; border-left: 1px solid #000; border-right: 1px solid #000; border-bottom: 1px dotted #888; }
-  table.q tr { break-inside: avoid; page-break-inside: avoid; }
-  table.q td.bn { border-right: 1px solid #000; }
+  /* Questions flow continuously in two columns: down the left, then the right, then the next page. */
+  .cols { -webkit-column-count: 2; column-count: 2; -webkit-column-gap: 9mm; column-gap: 9mm; -webkit-column-rule: 1px solid #999; column-rule: 1px solid #999; }
+  .q { -webkit-column-break-inside: avoid; break-inside: avoid; page-break-inside: avoid; margin-bottom: 9px; }
   .qt { font-weight: 600; }
+  .qb { font-size: 10.5px; margin-top: 1px; }
   .opts { margin-top: 3px; padding-left: 6px; }
   .o { margin: 1px 0; }
-  table.q tfoot td { width: auto; border: none; border-top: 1px solid #000; text-align: center; font-size: 10px; padding: 5px 0 0; }
+  .ob { font-size: 10px; }
   @media print { .noprint { display: none; } }
 </style></head>
 <body>
@@ -97,11 +105,7 @@ export function omrBookletHtml(test, letter) {
   </table>
   <div class="cand">Candidate Name: ______________________________ &nbsp; Roll No.: ______________ &nbsp; Date: ____________</div>
   <div class="instr"><h3>Instructions to Candidates</h3><ol>${instructions}</ol></div>
-  <table class="q">
-    <thead><tr><th>বাংলা (Bengali)</th><th>English</th></tr></thead>
-    <tfoot><tr><td colspan="2">The Competitive Edge &nbsp;•&nbsp; SET ${letter} &nbsp;•&nbsp; Booklet No. ${bookletNumber(test.id, letter)}</td></tr></tfoot>
-    <tbody>${rows}</tbody>
-  </table>
+  <div class="cols">${questions}</div>
 </body></html>`;
 }
 
