@@ -53,7 +53,13 @@ export default function MockManager() {
     setTestId(nt.id);
   };
   const toggleDemoFlag = () => updateTests((ts) => ts.map((t) => (t.id === activeTestId ? { ...t, isDemo: !t.isDemo } : t)));
-  const toggleAdminUnlock = () => updateTests((ts) => ts.map((t) => (t.id === activeTestId ? { ...t, adminUnlocked: !t.adminUnlocked } : t)));
+  const toggleAdminUnlock = () => updateTests((ts) => ts.map((t) => {
+    if (t.id !== activeTestId) return t;
+    const unlocking = !t.adminUnlocked;
+    // Offline / OMR: every unlock starts a brand-new set rotation, so the next student always gets
+    // Set A again (the new id makes the student site restart its A → B → C → D counter).
+    return { ...t, adminUnlocked: unlocking, ...(subject === OMR_SUBJECT && unlocking ? { omrUnlockSession: uid('us') } : {}) };
+  }));
   const editTestMeta = () => {
     if (!test) return;
     const title = prompt('Test title:', test.title); if (title === null) return;
@@ -153,4 +159,4 @@ export default function MockManager() {
       {test ? <QuestionEditor test={test} onChangeQuestions={updateTestQuestions} /> : <p className="muted text-sm">No tests in this subject yet.</p>}
     </div>
   );
-          }
+}
