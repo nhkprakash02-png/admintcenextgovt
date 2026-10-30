@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Printer, Trash2, FileDown } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { uid, SUBCATEGORIES } from '../../lib/utils';
-import { printOfflinePaper } from '../../lib/examEngine';
+import { printOfflinePaper } from '../../lib/offlinePaper';
 import QuestionEditor from './QuestionEditor';
 import { OMR_SUBJECT, OMR_SET_LETTERS, DEFAULT_ROLL_DIGITS, bookletNumber } from '../../lib/omr';
 import { printOmrBooklet } from '../../lib/omrPaper';
@@ -159,4 +159,4 @@ export default function MockManager() {
       {test ? <QuestionEditor test={test} onChangeQuestions={updateTestQuestions} /> : <p className="muted text-sm">No tests in this subject yet.</p>}
     </div>
   );
-}
+                                                             }
