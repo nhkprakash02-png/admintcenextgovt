@@ -10,6 +10,7 @@
 // between two columns or two pages, and the page footer is printed by the browser in the page
 // margin, so nothing can overlap the questions.
 import { buildOmrSet, bookletNumber } from './omr';
+import { WATERMARK_CSS, watermarkImgHtml, whenWatermarkReady } from './offlinePaper';
 
 const esc = (s) => String(s ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
 const has = (s) => typeof s === 'string' && s.trim().length > 0;
@@ -89,8 +90,10 @@ export function omrBookletHtml(test, letter) {
   .o { margin: 1px 0; }
   .ob { font-size: 10px; }
   @media print { .noprint { display: none; } }
+  ${WATERMARK_CSS}
 </style></head>
 <body>
+  ${watermarkImgHtml()}
   <div class="noprint">To save this booklet as a PDF: in the print window choose <b>Destination → Save as PDF</b> and set <b>Paper size → A4</b> (on a phone: <b>Print → Save as PDF</b>, paper size A4).</div>
   <div class="brand">
     <h1>The Competitive Edge</h1>
@@ -117,5 +120,5 @@ export function printOmrBooklet(test, letter) {
   w.document.close();
   const go = () => { try { w.focus(); w.print(); } catch (e) { /* the admin can still print manually */ } };
   const ready = w.document.fonts && w.document.fonts.ready ? w.document.fonts.ready : Promise.resolve();
-  Promise.race([ready, new Promise((r) => setTimeout(r, 2500))]).then(() => setTimeout(go, 300));
+  Promise.race([ready, new Promise((r) => setTimeout(r, 2500))]).then(() => whenWatermarkReady(w)).then(() => setTimeout(go, 300));
 }
