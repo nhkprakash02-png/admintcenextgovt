@@ -4,7 +4,7 @@ import React, { useState } from 'react';
 import { Printer, Trash2 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { uid } from '../../lib/utils';
-import { printOfflinePaper } from '../../lib/examEngine';
+import { printOfflinePaper } from '../../lib/offlinePaper';
 import QuestionEditor from './QuestionEditor';
 
 export default function PyqManager() {
